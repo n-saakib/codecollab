@@ -1,0 +1,11 @@
+# Environment
+codecollab_venv/
+.env
+
+# IDE - VSCode / PyCharm
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc

@@ -1,0 +1,13 @@
+asgiref==3.9.1
+Django==5.2.6
+django-environ==0.12.0
+django-stubs==5.2.2
+django-stubs-ext==5.2.2
+djangorestframework==3.16.1
+mypy==1.17.1
+mypy_extensions==1.1.0
+pathspec==0.12.1
+psycopg2-binary==2.9.10
+sqlparse==0.5.3
+types-PyYAML==6.0.12.20250822
+typing_extensions==4.15.0
