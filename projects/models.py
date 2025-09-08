@@ -59,7 +59,11 @@ class FileSystemItem(models.Model):
     An abstract base class for Files and Folders to share common fields.
     """
     name = models.CharField(max_length=255)
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='items')
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name='%(class)s_items'
+    )
     parent = models.ForeignKey(
         'self',
         on_delete=models.CASCADE,
