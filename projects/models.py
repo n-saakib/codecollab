@@ -52,3 +52,44 @@ class ProjectMembership(models.Model):
 
     def __str__(self):
         return f"{self.user.username} in {self.project.name} as {self.get_role_display()}"
+
+
+class FileSystemItem(models.Model):
+    """
+    An abstract base class for Files and Folders to share common fields.
+    """
+    name = models.CharField(max_length=255)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='items')
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        related_name='children',
+        null=True,
+        blank=True
+    )
+
+    class Meta:
+        abstract = True
+        unique_together = ('project', 'parent', 'name')
+
+    def __str__(self):
+        return self.name
+
+
+class Folder(FileSystemItem):
+    """
+    Represents a folder in the project's file system.
+    """
+    pass
+
+
+class File(FileSystemItem):
+    """
+    Represents a code file in the project's file system.
+    """
+    content: models.TextField = models.TextField(blank=True, default='')
+    language: models.CharField = models.CharField(
+        max_length=50,
+        blank=True,
+        default='plaintext'
+    )
