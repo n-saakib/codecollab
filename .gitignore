@@ -9,3 +9,5 @@ codecollab_venv/
 # Python
 __pycache__/
 *.pyc
+
+/media/
