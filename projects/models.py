@@ -44,14 +44,14 @@ class ProjectMembership(models.Model):
         VIEWER = 'VIEWER', 'Viewer'
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    member = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     role = models.CharField(choices=Role.choices, max_length=10, default=Role.EDITOR)
 
     class Meta:
-        unique_together = ('project', 'user')
+        unique_together = ('project', 'member')
 
     def __str__(self):
-        return f"{self.user.username} in {self.project.name} as {self.get_role_display()}"
+        return f"{self.member.username} in {self.project.name} as {self.get_role_display()}"
 
 
 class FileSystemItem(models.Model):
@@ -91,9 +91,10 @@ class File(FileSystemItem):
     """
     Represents a code file in the project's file system.
     """
-    content: models.TextField = models.TextField(blank=True, default='')
-    language: models.CharField = models.CharField(
+    content = models.TextField(blank=True, default='')
+    language = models.CharField(
         max_length=50,
         blank=True,
         default='plaintext'
     )
+    updated_at = models.DateTimeField(auto_now=True)
