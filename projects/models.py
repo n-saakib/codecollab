@@ -71,6 +71,8 @@ class FileSystemItem(models.Model):
         null=True,
         blank=True
     )
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_modified = models.DateTimeField(auto_now=True)
 
     class Meta:
         abstract = True
@@ -97,4 +99,3 @@ class File(FileSystemItem):
         blank=True,
         default='plaintext'
     )
-    updated_at = models.DateTimeField(auto_now=True)

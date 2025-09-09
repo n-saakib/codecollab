@@ -48,7 +48,7 @@ class FolderAdmin(admin.ModelAdmin):
 @admin.register(File)
 class FileAdmin(admin.ModelAdmin):
     """ Customizes the admin for the File model. """
-    list_display = ['name', 'project', 'parent', 'language', 'updated_at']
+    list_display = ['name', 'project', 'parent', 'language', 'last_modified']
     search_fields = ['name', 'project__name', 'parent__name', 'language']
     autocomplete_fields = ('project', 'parent')
     list_filter = ['project', 'language']
