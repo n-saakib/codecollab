@@ -20,6 +20,15 @@ class ProjectDashboardView(LoginRequiredMixin, generic.ListView):
         return Project.objects.filter(members=self.request.user)
 
 
+class ProjectEditorView(LoginRequiredMixin, generic.DetailView):
+    model = Project
+    context_object_name = 'project'
+    template_name = 'projects/editor.html'
+
+    def get_queryset(self):
+        return Project.objects.filter(members=self.request.user)
+
+
 class ProjectViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows projects to be viewed or edited.

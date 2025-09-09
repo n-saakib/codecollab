@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor: {{ project.name }} | CodeCollab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- CodeMirror CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/material.min.css">
+
+    <style>
+        /* Ensure CodeMirror takes up the full height */
+        .CodeMirror {
+            height: 100%;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body class="bg-gray-800 text-white h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-gray-900 shadow-md flex-shrink-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div>
+                    <a href="{% url 'dashboard' %}" class="text-xl font-bold"> &larr; Dashboard</a>
+                    <span class="text-gray-400 mx-2">/</span>
+                    <span class="text-xl font-bold">{{ project.name }}</span>
+                </div>
+                <div>
+                    <button id="save-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-150 ease-in-out">
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex flex-grow overflow-hidden">
+        <!-- File Explorer Sidebar -->
+        <aside class="w-1/4 bg-gray-900 p-4 overflow-y-auto">
+            <h2 class="text-lg font-semibold mb-4">File Explorer</h2>
+            <ul id="file-tree" class="space-y-2">
+                <!-- File tree will be dynamically inserted here -->
+            </ul>
+        </aside>
+
+        <!-- Editor Area -->
+        <main class="w-3/4 flex flex-col">
+            <div id="editor-container" class="flex-grow relative">
+                <textarea id="code-editor"></textarea>
+            </div>
+            <div id="status-bar" class="bg-gray-900 text-sm px-4 py-1 flex justify-between items-center">
+                <span id="current-file-name">No file selected</span>
+                <span id="current-language">Plain Text</span>
+            </div>
+        </main>
+    </div>
+
+    <!-- CodeMirror JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/css/css.min.js"></script>
+
+    <!-- Application JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // --- STATE ---
+            const projectId = {{ project.pk }};
+            let currentFileId = null;
+
+            // --- UI ELEMENTS ---
+            const fileTreeElement = document.getElementById('file-tree');
+            const saveButton = document.getElementById('save-button');
+            const currentFileNameElement = document.getElementById('current-file-name');
+            const currentLanguageElement = document.getElementById('current-language');
+
+            // --- CODEMIRROR INITIALIZATION ---
+            const editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+                lineNumbers: true,
+                theme: 'material',
+                mode: 'python', // Default mode
+            });
+
+            // --- API FUNCTIONS ---
+            async function fetchFileSystem() {
+                // Fetch both files and folders for the current project
+                const [filesRes, foldersRes] = await Promise.all([
+                    fetch(`/api/files/?project=${projectId}`),
+                    fetch(`/api/folders/?project=${projectId}`)
+                ]);
+                const files = await filesRes.json();
+                const folders = await foldersRes.json();
+
+                // For simplicity, we'll just list them. A real app would build a nested tree.
+                renderFileSystem(files, folders);
+            }
+
+            async function fetchFileContent(fileId) {
+                const response = await fetch(`/api/files/${fileId}/`);
+                if (!response.ok) {
+                    alert('Error fetching file content.');
+                    return;
+                }
+                const file = await response.json();
+
+                // Update state and UI
+                currentFileId = file.id;
+                editor.setValue(file.content || ''); // Set editor content
+                editor.setOption("mode", file.language || 'plaintext'); // Set language mode
+                currentFileNameElement.textContent = file.name;
+                currentLanguageElement.textContent = file.language || 'Plain Text';
+            }
+
+            async function saveFileContent() {
+                if (!currentFileId) {
+                    alert('No file is open to save.');
+                    return;
+                }
+
+                const content = editor.getValue();
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}';
+
+                const response = await fetch(`/api/files/${currentFileId}/`, {
+                    method: 'PATCH', // PATCH only sends the fields we are changing
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ content: content })
+                });
+
+                if (response.ok) {
+                    // Visual feedback for successful save
+                    saveButton.textContent = 'Saved!';
+                    saveButton.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    saveButton.classList.add('bg-blue-600');
+                    setTimeout(() => {
+                        saveButton.textContent = 'Save';
+                        saveButton.classList.remove('bg-blue-600');
+                        saveButton.classList.add('bg-green-600', 'hover:bg-green-700');
+                    }, 1500);
+                } else {
+                    alert('Error saving file.');
+                }
+            }
+
+            // --- UI RENDERING ---
+            function renderFileSystem(files, folders) {
+                fileTreeElement.innerHTML = ''; // Clear existing tree
+                // Render folders first
+                folders.forEach(folder => {
+                    const li = document.createElement('li');
+                    li.textContent = `📁 ${folder.name}`;
+                    li.className = 'cursor-pointer hover:text-blue-400';
+                    fileTreeElement.appendChild(li);
+                });
+                // Render files
+                files.forEach(file => {
+                    const li = document.createElement('li');
+                    li.textContent = `📄 ${file.name}`;
+                    li.className = 'cursor-pointer hover:text-blue-400';
+                    li.dataset.fileId = file.id; // Store file ID for the click event
+                    fileTreeElement.appendChild(li);
+                });
+            }
+
+            // --- EVENT LISTENERS ---
+            fileTreeElement.addEventListener('click', function(e) {
+                if (e.target && e.target.dataset.fileId) {
+                    const fileId = e.target.dataset.fileId;
+                    fetchFileContent(fileId);
+                }
+            });
+
+            saveButton.addEventListener('click', saveFileContent);
+
+            // --- INITIALIZATION ---
+            fetchFileSystem();
+        });
+    </script>
+</body>
+</html>
