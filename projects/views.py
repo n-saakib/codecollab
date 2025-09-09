@@ -1,7 +1,9 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.urls import reverse
 from django.views import generic
 from rest_framework import viewsets, permissions
 
+from projects.forms import ProjectForm
 from projects.models import Project, Folder, File
 from projects.permissions import IsProjectMember
 from projects.serializers import ProjectSerializer, FolderSerializer, FileSerializer
@@ -27,6 +29,22 @@ class ProjectEditorView(LoginRequiredMixin, generic.DetailView):
 
     def get_queryset(self):
         return Project.objects.filter(members=self.request.user)
+
+
+class ProjectCreateView(LoginRequiredMixin, generic.CreateView):
+    model = Project
+    form_class = ProjectForm
+    template_name = "projects/project_form.html"
+
+    def form_valid(self, form):
+        form.instance.owner = self.request.user
+        response = super().form_valid(form)
+
+        self.object.members.add(self.request.user)
+        return response
+
+    def get_success_url(self):
+        return reverse('editor', kwargs={'pk': self.object.pk})
 
 
 class ProjectViewSet(viewsets.ModelViewSet):

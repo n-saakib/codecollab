@@ -2,7 +2,8 @@ from django.urls import path, include
 from django.views.generic import RedirectView
 from rest_framework.routers import DefaultRouter
 
-from projects.views import ProjectDashboardView, ProjectViewSet, FileViewSet, FolderViewSet, ProjectEditorView
+from projects.views import ProjectDashboardView, ProjectViewSet, FileViewSet, FolderViewSet, ProjectEditorView, \
+    ProjectCreateView
 
 router = DefaultRouter()
 router.register(r'projects', ProjectViewSet, basename='project')
@@ -14,4 +15,5 @@ urlpatterns=[
     path('dashboard/', ProjectDashboardView.as_view(), name='dashboard'),
     path('api/', include(router.urls)),
     path('projects/<int:pk>/', ProjectEditorView.as_view(), name='editor'),
+    path('projects/create/', ProjectCreateView.as_view(), name='project-create'),
 ]
