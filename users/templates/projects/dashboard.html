@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | CodeCollab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- Navigation Bar -->
+    <nav class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex-shrink-0">
+                    <a href="{% url 'dashboard' %}" class="text-2xl font-bold text-gray-800">CodeCollab</a>
+                </div>
+                <!-- User Info and Logout -->
+                <div class="flex items-center">
+                    <span class="text-gray-600 mr-4">Welcome, {{ user.username }}!</span>
+                    <form action="{% url 'logout' %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-150 ease-in-out">
+                            Logout
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <h1 class="text-3xl font-bold text-gray-900 mb-6">Your Projects</h1>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Loop through the projects -->
+                {% for project in projects %}
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-transform duration-200">
+                        <div class="p-6">
+                            <h2 class="text-xl font-semibold text-gray-800 mb-2">{{ project.name }}</h2>
+                            <p class="text-gray-600 text-sm mb-4">{{ project.description|default:"No description available." }}</p>
+                            <a href="#" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-150 ease-in-out">
+                                Open Editor
+                            </a>
+                        </div>
+                    </div>
+                {% empty %}
+                    <!-- This block is shown if the user has no projects -->
+                    <div class="col-span-full bg-white rounded-lg shadow-md p-8 text-center">
+                        <p class="text-gray-600">You are not a member of any projects yet.</p>
+                        <a href="#" class="inline-block mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Create a New Project</a>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </main>
+
+</body>
+</html>
