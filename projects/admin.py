@@ -30,8 +30,8 @@ class ProjectAdmin(admin.ModelAdmin):
     """
     This class customizes how the Project list and edit pages look and behave.
     """
-    list_display = ['name', 'owner', 'created_at']
-    search_fields = ['name', 'owner__username']
+    list_display = ['title', 'owner', 'created_at']
+    search_fields = ['title', 'owner__username']
     autocomplete_fields = ['owner']
     inlines = [ProjectMembershipInline]
 
@@ -40,7 +40,7 @@ class ProjectAdmin(admin.ModelAdmin):
 class FolderAdmin(admin.ModelAdmin):
     """ Customizes the admin for the Folder model. """
     list_display = ['name', 'project', 'parent']
-    search_fields = ['name', 'project__name', 'parent__name']
+    search_fields = ['name', 'project__title', 'parent__name']
     autocomplete_fields = ('project', 'parent')
     list_filter = ['project']
 
@@ -49,6 +49,6 @@ class FolderAdmin(admin.ModelAdmin):
 class FileAdmin(admin.ModelAdmin):
     """ Customizes the admin for the File model. """
     list_display = ['name', 'project', 'parent', 'language', 'last_modified']
-    search_fields = ['name', 'project__name', 'parent__name', 'language']
+    search_fields = ['name', 'project__title', 'parent__name', 'language']
     autocomplete_fields = ('project', 'parent')
     list_filter = ['project', 'language']

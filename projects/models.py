@@ -13,7 +13,7 @@ class Project(models.Model):
     """
     Represents a collaborative workspace containing files and folders.
     """
-    name = models.CharField(max_length=255)
+    title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
