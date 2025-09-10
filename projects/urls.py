@@ -16,4 +16,5 @@ urlpatterns=[
     path('api/', include(router.urls)),
     path('projects/<int:pk>/', ProjectEditorView.as_view(), name='editor'),
     path('projects/create/', ProjectCreateView.as_view(), name='project-create'),
+
 ]

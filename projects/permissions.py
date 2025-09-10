@@ -16,3 +16,11 @@ class IsProjectMember(permissions.BasePermission):
             project = obj.project
 
         return project is not None and project.members.filter(id=request.user.id).exists()
+
+
+class IsProjectOwner(permissions.BasePermission):
+    """
+    Custom permission to only allow the owner of a project to perform an action.
+    """
+    def has_object_permission(self, request, view, obj):
+        return obj.owner == request.user
