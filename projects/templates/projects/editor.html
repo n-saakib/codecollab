@@ -80,6 +80,7 @@
             const projectId = {{ project.pk }};
             let currentFileId = null;
             let projectSocket = null;
+            let isUpdatingFromSocket = false;
 
             // --- UI ELEMENTS ---
             const fileTreeElement = document.getElementById('file-tree');
@@ -95,6 +96,52 @@
                 theme: 'material',
                 mode: 'python',
             });
+
+            editor.on('change', (instance, changeObj) => {
+                if (isUpdatingFromSocket) { return; }
+                if (currentFileId && projectSocket && projectSocket.readyState === WebSocket.OPEN) {
+                    projectSocket.send(JSON.stringify({
+                        type: 'editor_update',
+                        file_id: currentFileId,
+                        content: instance.getValue()
+                    }));
+                }
+            });
+
+            // --- WEBSOCKET SETUP ---
+            function connectWebSocket() {
+                const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+                const wsUrl = `${wsProtocol}://${window.location.host}/ws/projects/${projectId}/`;
+
+                console.log("Connecting to WebSocket:", wsUrl);
+                projectSocket = new WebSocket(wsUrl);
+
+                projectSocket.onopen = function(e) {
+                    console.log("WebSocket connection established successfully.");
+                };
+
+                projectSocket.onmessage = function(e) {
+                    const data = JSON.parse(e.data);
+
+                    if (data.type === 'editor_update') {
+                        if (data.file_id === currentFileId) {
+                            isUpdatingFromSocket = true;
+                            const cursor = editor.getCursor();
+                            editor.setValue(data.content);
+                            editor.setCursor(cursor);
+                            setTimeout(() => { isUpdatingFromSocket = false; }, 50);
+                        }
+                    }
+                };
+
+                projectSocket.onclose = function(e) {
+                    console.error("WebSocket connection closed unexpectedly. Trying to reconnect...");
+                };
+
+                projectSocket.onerror = function(err) {
+                    console.error('WebSocket error observed:', err);
+                };
+            }
 
             // --- API FUNCTIONS ---
             async function fetchFileSystem() {
@@ -180,36 +227,6 @@
                 } else {
                     alert(`Error deleting ${type}.`);
                 }
-            }
-
-            // --- WEBSOCKET SETUP ---
-            function connectWebSocket() {
-                // Construct the WebSocket URL. Use 'wss://' for secure connections in production.
-                const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-                const wsUrl = `${wsProtocol}://${window.location.host}/ws/projects/${projectId}/`;
-
-                console.log("Connecting to WebSocket:", wsUrl);
-                projectSocket = new WebSocket(wsUrl);
-
-                projectSocket.onopen = function(e) {
-                    console.log("WebSocket connection established successfully.");
-                };
-
-                projectSocket.onmessage = function(e) {
-                    const data = JSON.parse(e.data);
-                    console.log("Message received from server:", data);
-                    // We will add logic here later to handle incoming messages
-                };
-
-                projectSocket.onclose = function(e) {
-                    console.error("WebSocket connection closed unexpectedly. Trying to reconnect...");
-                    // Optional: implement a reconnect mechanism
-                    // setTimeout(connectWebSocket, 5000); // Try to reconnect every 5 seconds
-                };
-
-                projectSocket.onerror = function(err) {
-                    console.error('WebSocket error observed:', err);
-                };
             }
 
             // --- UI RENDERING (Simplified) ---
