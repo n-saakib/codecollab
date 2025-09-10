@@ -1,3 +1,4 @@
+from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 from projects.models import Project
@@ -24,6 +25,7 @@ class ProjectConsumer(AsyncJsonWebsocketConsumer):
         print(f"Received from {self.user.username}: {content}")
 
 
+    @sync_to_async
     def is_project_member(self):
         project = Project.objects.get(pk=self.project_pk)
         return project.members.filter(id=self.user.id).exists()
