@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editor: {{ project.name }} | CodeCollab</title>
+    <title>Editor: {{ project.title }} | CodeCollab</title>
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- CodeMirror CSS -->
@@ -27,7 +27,7 @@
                 <div>
                     <a href="{% url 'dashboard' %}" class="text-xl font-bold"> &larr; Dashboard</a>
                     <span class="text-gray-400 mx-2">/</span>
-                    <span class="text-xl font-bold">{{ project.name }}</span>
+                    <span class="text-xl font-bold">{{ project.title }}</span>
                 </div>
                 <div>
                     <button id="save-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-150 ease-in-out">
@@ -42,7 +42,13 @@
     <div class="flex flex-grow overflow-hidden">
         <!-- File Explorer Sidebar -->
         <aside class="w-1/4 bg-gray-900 p-4 overflow-y-auto">
-            <h2 class="text-lg font-semibold mb-4">File Explorer</h2>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold">File Explorer</h2>
+                <div>
+                    <button id="add-file-btn" title="New File" class="px-2 py-1 text-lg hover:bg-gray-700 rounded">+</button>
+                    <button id="add-folder-btn" title="New Folder" class="px-2 py-1 text-lg hover:bg-gray-700 rounded">📁</button>
+                </div>
+            </div>
             <ul id="file-tree" class="space-y-2">
                 <!-- File tree will be dynamically inserted here -->
             </ul>
@@ -67,7 +73,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/xml/xml.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/css/css.min.js"></script>
 
-    <!-- Application JavaScript -->
+    <!-- Application JavaScript (Simplified) -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             // --- STATE ---
@@ -79,102 +85,159 @@
             const saveButton = document.getElementById('save-button');
             const currentFileNameElement = document.getElementById('current-file-name');
             const currentLanguageElement = document.getElementById('current-language');
+            const addFileBtn = document.getElementById('add-file-btn');
+            const addFolderBtn = document.getElementById('add-folder-btn');
 
             // --- CODEMIRROR INITIALIZATION ---
             const editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
                 lineNumbers: true,
                 theme: 'material',
-                mode: 'python', // Default mode
+                mode: 'python',
             });
 
             // --- API FUNCTIONS ---
             async function fetchFileSystem() {
-                // Fetch both files and folders for the current project
                 const [filesRes, foldersRes] = await Promise.all([
                     fetch(`/api/files/?project=${projectId}`),
                     fetch(`/api/folders/?project=${projectId}`)
                 ]);
                 const files = await filesRes.json();
                 const folders = await foldersRes.json();
-
-                // For simplicity, we'll just list them. A real app would build a nested tree.
                 renderFileSystem(files, folders);
             }
 
             async function fetchFileContent(fileId) {
                 const response = await fetch(`/api/files/${fileId}/`);
                 if (!response.ok) {
-                    alert('Error fetching file content.');
-                    return;
+                    alert('Error fetching file content.'); return;
                 }
                 const file = await response.json();
-
-                // Update state and UI
                 currentFileId = file.id;
-                editor.setValue(file.content || ''); // Set editor content
-                editor.setOption("mode", file.language || 'plaintext'); // Set language mode
+                editor.setValue(file.content || '');
+                editor.setOption("mode", file.language || 'plaintext');
                 currentFileNameElement.textContent = file.name;
                 currentLanguageElement.textContent = file.language || 'Plain Text';
             }
 
             async function saveFileContent() {
-                if (!currentFileId) {
-                    alert('No file is open to save.');
-                    return;
-                }
-
+                if (!currentFileId) { alert('No file is open to save.'); return; }
                 const content = editor.getValue();
-                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}';
-
+                const csrfToken = '{{ csrf_token }}';
                 const response = await fetch(`/api/files/${currentFileId}/`, {
-                    method: 'PATCH', // PATCH only sends the fields we are changing
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
                     body: JSON.stringify({ content: content })
                 });
-
                 if (response.ok) {
-                    // Visual feedback for successful save
                     saveButton.textContent = 'Saved!';
-                    saveButton.classList.remove('bg-green-600', 'hover:bg-green-700');
-                    saveButton.classList.add('bg-blue-600');
+                    saveButton.classList.replace('bg-green-600', 'bg-blue-600');
+                    saveButton.classList.replace('hover:bg-green-700', 'hover:bg-blue-700');
                     setTimeout(() => {
                         saveButton.textContent = 'Save';
-                        saveButton.classList.remove('bg-blue-600');
-                        saveButton.classList.add('bg-green-600', 'hover:bg-green-700');
+                        saveButton.classList.replace('bg-blue-600', 'bg-green-600');
+                        saveButton.classList.replace('hover:bg-green-700', 'hover:bg-green-700');
                     }, 1500);
                 } else {
                     alert('Error saving file.');
                 }
             }
 
-            // --- UI RENDERING ---
+            async function createFileSystemItem(type, name) {
+                const url = (type === 'file') ? '/api/files/' : '/api/folders/';
+                const csrfToken = '{{ csrf_token }}';
+                // Parent is always null for a flat file system
+                const body = { name: name, project: projectId, parent: null };
+                if (type === 'file') {
+                    body.content = `// New file: ${name}\n`;
+                    body.language = 'plaintext';
+                }
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                    body: JSON.stringify(body)
+                });
+                if (response.ok) {
+                    fetchFileSystem();
+                } else {
+                    const errorData = await response.json();
+                    alert(`Error creating ${type}: ${JSON.stringify(errorData)}`);
+                }
+            }
+
+            async function deleteFileSystemItem(type, itemId) {
+                if (!confirm(`Are you sure you want to delete this ${type}?`)) { return; }
+                const url = (type === 'file') ? `/api/files/${itemId}/` : `/api/folders/${itemId}/`;
+                const csrfToken = '{{ csrf_token }}';
+                const response = await fetch(url, { method: 'DELETE', headers: { 'X-CSRFToken': csrfToken } });
+                if (response.ok) {
+                    fetchFileSystem();
+                    if (type === 'file' && currentFileId === parseInt(itemId)) {
+                        editor.setValue('');
+                        currentFileId = null;
+                        currentFileNameElement.textContent = 'No file selected';
+                    }
+                } else {
+                    alert(`Error deleting ${type}.`);
+                }
+            }
+
+            // --- UI RENDERING (Simplified) ---
             function renderFileSystem(files, folders) {
                 fileTreeElement.innerHTML = ''; // Clear existing tree
-                // Render folders first
-                folders.forEach(folder => {
+
+                const createListItem = (item, type) => {
                     const li = document.createElement('li');
-                    li.textContent = `📁 ${folder.name}`;
-                    li.className = 'cursor-pointer hover:text-blue-400';
-                    fileTreeElement.appendChild(li);
-                });
-                // Render files
-                files.forEach(file => {
-                    const li = document.createElement('li');
-                    li.textContent = `📄 ${file.name}`;
-                    li.className = 'cursor-pointer hover:text-blue-400';
-                    li.dataset.fileId = file.id; // Store file ID for the click event
-                    fileTreeElement.appendChild(li);
-                });
+                    li.className = 'flex items-center justify-between group p-1 rounded hover:bg-gray-700';
+
+                    const itemName = document.createElement('span');
+                    itemName.textContent = `${type === 'folder' ? '📁' : '📄'} ${item.name}`;
+                    itemName.className = 'cursor-pointer flex-grow';
+                    if (type === 'file') {
+                        itemName.dataset.fileId = item.id;
+                    }
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.innerHTML = '&times;';
+                    deleteBtn.title = `Delete ${item.name}`;
+                    deleteBtn.className = 'px-2 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity';
+                    deleteBtn.dataset.itemId = item.id;
+                    deleteBtn.dataset.itemType = type;
+
+                    li.appendChild(itemName);
+                    li.appendChild(deleteBtn);
+                    return li;
+                };
+
+                // Render folders first, then files, sorted alphabetically
+                folders.sort((a,b) => a.name.localeCompare(b.name));
+                files.sort((a,b) => a.name.localeCompare(b.name));
+
+                folders.forEach(folder => fileTreeElement.appendChild(createListItem(folder, 'folder')));
+                files.forEach(file => fileTreeElement.appendChild(createListItem(file, 'file')));
             }
 
             // --- EVENT LISTENERS ---
+            addFileBtn.addEventListener('click', function() {
+                const fileName = prompt("Enter the name for the new file:");
+                if (fileName) { createFileSystemItem('file', fileName); }
+            });
+
+            addFolderBtn.addEventListener('click', function() {
+                const folderName = prompt("Enter the name for the new folder:");
+                if (folderName) { createFileSystemItem('folder', folderName); }
+            });
+
             fileTreeElement.addEventListener('click', function(e) {
-                if (e.target && e.target.dataset.fileId) {
-                    const fileId = e.target.dataset.fileId;
-                    fetchFileContent(fileId);
+                const target = e.target;
+                const fileSpan = target.closest('span[data-file-id]');
+                const deleteButton = target.closest('button[data-item-id]');
+
+                if (deleteButton) {
+                    const itemId = deleteButton.dataset.itemId;
+                    const itemType = deleteButton.dataset.itemType;
+                    deleteFileSystemItem(itemType, parseInt(itemId));
+                } else if (fileSpan) {
+                    fetchFileContent(fileSpan.dataset.fileId);
                 }
             });
 
@@ -186,3 +249,4 @@
     </script>
 </body>
 </html>
+

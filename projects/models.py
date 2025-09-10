@@ -31,7 +31,7 @@ class Project(models.Model):
         return list(self.members.all())
 
     def __str__(self):
-        return self.name
+        return self.title
 
 
 class ProjectMembership(models.Model):
